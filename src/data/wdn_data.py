@@ -1,9 +1,10 @@
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
 import torch
-import torch.nn as nn
-from torch.utils.data import TensorDataset, DataLoader, Dataset
+
+from sklearn.model_selection import train_test_split
+from torch.utils.data import TensorDataset, DataLoader
+
 
 def age_map(x: int) -> int:
     x = int(x)
@@ -25,8 +26,8 @@ def age_map(x: int) -> int:
 def wdn_data_load(args):
 
     ######################## DATA LOAD
-    users = pd.read_csv(args.DATA_PATH + 'user.csv')
-    books = pd.read_csv(args.DATA_PATH + 'book.csv')
+    users = pd.read_csv(args.DATA_PATH + 'users.csv')
+    books = pd.read_csv(args.DATA_PATH + 'books.csv')
 
     train = pd.read_csv(args.DATA_PATH + 'train_ratings.csv')
     test = pd.read_csv(args.DATA_PATH + 'test_ratings.csv')
@@ -74,9 +75,7 @@ def wdn_data_load(args):
     test['location_country'] = test['location_country'].map(loc_country2idx)
     
     train['age'] = train['age'].fillna(int(train['age'].mean()))
-    #train['age'] = train['age'].apply(age_map)
     test['age'] = test['age'].fillna(int(test['age'].mean()))
-    #test['age'] = test['age'].apply(age_map)
 
     category2idx = {v:k for k,v in enumerate(context_df['category'].unique())}
     publisher2idx = {v:k for k,v in enumerate(context_df['publisher'].unique())}
@@ -106,12 +105,9 @@ def wdn_data_load(args):
         "year2idx":year2idx
     }
 
-    #max_age = context_df.age.max()
-
     field_dims = np.array([
                         len(user2idx),
                         len(isbn2idx),
-                        #7, 
                         99,
                         len(idx['loc_city2idx']),
                         len(idx['loc_state2idx']),

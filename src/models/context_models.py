@@ -1,19 +1,13 @@
-import shutil
 import tqdm
 import pandas as pd
-
-import numpy as np
-
 import torch
-import torch.nn as nn
-import torch.optim as optim
+import wandb
+import os
 
 from ._models import _FactorizationMachineModel, _FieldAwareFactorizationMachineModel
 from ._models import rmse, RMSELoss
 
-import wandb
-import time
-import os
+
 
 def predicts_map(x: float) -> float:
     if x < 1:
@@ -81,8 +75,7 @@ class FactorizationMachineModel:
                 wandb.log({"FM RMSE": rmse_score})
             if rmse_score < best_rmse_score :
                 best_rmse_score = rmse_score
-                torch.save({'state':self.model.state_dict(),'args':self.args}, 
-                        os.path.join('models', f"{self.model_name}_model.pt"))
+                torch.save(self.model, os.path.join('models', f"{self.model_name}_model.pt"))
             print('epoch:', epoch, 'validation: rmse:', rmse_score)
         print('best rmse:', best_rmse_score)
 
@@ -111,7 +104,7 @@ class FactorizationMachineModel:
         submission = pd.read_csv(self.data_path + 'sample_submission.csv')
         submission['rating'] = predicts
         submission['rating'] = submission['rating'].apply(predicts_map)
-        submission.to_csv(f'submit/{self.wandb_model_name}_EMBED_DIM{self.embed_dim}_EPOCHS{self.epochs}_LR{self.learning_rate}_DATA_PATH{self.data_path[5:-1]}_BATHC_SIZE{self.batch_size}.csv', index=False)
+        submission.to_csv(f'submit/{self.wandb_model_name}_EMBED_DIM{self.embed_dim}_EPOCHS{self.epochs}_WD{self.weight_decay}_DATA_PATH_{self.data_path[5:-1]}_BATHC_SIZE{self.batch_size}.csv', index=False)
 
         return predicts
 
@@ -172,8 +165,7 @@ class FieldAwareFactorizationMachineModel:
                 wandb.log({"FFM RMSE": rmse_score})
             if rmse_score < best_rmse_score :
                 best_rmse_score = rmse_score
-                torch.save({'state':self.model.state_dict(),'args':self.args}, 
-                        os.path.join('models', f"{self.model_name}_model.pt"))
+                torch.save(self.model, os.path.join('models', f"{self.model_name}_model.pt"))
             print('epoch:', epoch, 'validation: rmse:', rmse_score)
         print('best rmse:', best_rmse_score)
 
@@ -202,6 +194,6 @@ class FieldAwareFactorizationMachineModel:
         submission = pd.read_csv(self.data_path + 'sample_submission.csv')
         submission['rating'] = predicts
         submission['rating'] = submission['rating'].apply(predicts_map)
-        submission.to_csv(f'submit/{self.wandb_model_name}_EMBED_DIM{self.embed_dim}_EPOCHS{self.epochs}_WD{self.weight_decay}_DATA_PATH{self.data_path[5:-1]}_BATHC_SIZE{self.batch_size}.csv', index=False)
+        submission.to_csv(f'submit/{self.wandb_model_name}_EMBED_DIM{self.embed_dim}_EPOCHS{self.epochs}_WD{self.weight_decay}_DATA_PATH_{self.data_path[5:-1]}_BATHC_SIZE{self.batch_size}.csv', index=False)
 
         return predicts

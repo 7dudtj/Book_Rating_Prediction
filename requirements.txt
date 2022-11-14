@@ -1,8 +1,8 @@
-pandas
-scikit-learn
-nltk
-transformers
-xgboost
-lightgbm
-catboost
-hyperopt
+wheel==0.37.1
+wincertstore==0.2
+pip==22.2.2
+scikit-learn==1.1.3
+streamlit==1.14.1
+tqdm==4.64.1
+wandb==0.13.5
+torchvision==0.9.0

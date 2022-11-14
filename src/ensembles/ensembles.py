@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-from ..models._models import rmse 
 
 class Ensemble:
     def __init__(self, filenames:str, filepath:str):
@@ -52,7 +51,7 @@ class Ensemble:
             result[self.output_df[pre_idx]<1] = self.output_df.loc[self.output_df[pre_idx]<1,post_idx]
         return result.tolist()
 
-    def mean(self) :
+    def mean(self):
         result = []
         for i in range(len(self.output_list[0])) :
             data = [row[i] for row in self.output_list]

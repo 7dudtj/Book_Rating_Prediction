@@ -2,29 +2,20 @@ import time
 import argparse
 import pandas as pd
 import numpy as np
+import wandb
+
+from sklearn.model_selection import KFold
 
 from src import seed_everything
 
-from src.data import context_data_load, context_data_split, context_data_loader
-from src.data import fm_data_load, fm_data_split, fm_data_loader
-from src.data import ffm_data_load, ffm_data_split, ffm_data_loader
-from src.data import dl_data_load, dl_data_split, dl_data_loader
-from src.data import ncf_data_load, ncf_data_split, ncf_data_loader
-from src.data import dcn_data_load, dcn_data_split, dcn_data_loader
-from src.data import wdn_data_load, wdn_data_split, wdn_data_loader
-from src.data import image_data_load, image_data_split, image_data_loader
-from src.data import text_data_load, text_data_split, text_data_loader
+from src.data import fm_data_load, fm_data_loader
+from src.data import ffm_data_load, ffm_data_loader
+from src.data import ncf_data_load, ncf_data_loader
+from src.data import wdn_data_load, wdn_data_loader
 
 from src import FactorizationMachineModel, FieldAwareFactorizationMachineModel
-from src import NeuralCollaborativeFiltering, WideAndDeepModel, DeepCrossNetworkModel
-from src import CNN_FM
-from src import DeepCoNN
+from src import NeuralCollaborativeFiltering, WideAndDeepModel
 
-import wandb
-
-from gb import XGB, LGBM, CATB, rmse, gb_data_load, gb_data_split
-
-from sklearn.model_selection import KFold
 
 def main(args):
     seed_everything(args.SEED)
@@ -37,15 +28,8 @@ def main(args):
         data = ffm_data_load(args)
     elif args.MODEL in ('WDN'):
         data = wdn_data_load(args)
-    elif args.MODEL in ('DCN'):
-        data = dcn_data_load(args)
     elif args.MODEL in ('NCF'):
         data = ncf_data_load(args)
-    elif args.MODEL in ('CNN_FM', 'DeepCoNN'):
-        print('We do not support CNN_FM & DeepCoNN models at this kfold file.\n')
-        return
-    elif args.MODEL in ('LGBM','CATB','XGB'):
-        data = gb_data_load(args)
     else:
         pass
 
@@ -56,7 +40,7 @@ def main(args):
 
     ######################## Train/Valid Split
     print(f'--------------- {args.MODEL} Train/Valid Split ---------------')
-    if args.MODEL in ('FM', 'FFM', 'NCF', 'WDN', 'DCN'):
+    if args.MODEL in ('FM', 'FFM', 'NCF', 'WDN'):
         X_data = np.array(data['train'].drop(['rating'], axis=1))
         y_data = np.array(data['train']['rating'])
         for train_idx, test_idx in kf.split(X_data):
@@ -74,24 +58,9 @@ def main(args):
                 data = ncf_data_loader(args, data)
             elif args.MODEL in ('WDN'):
                 data = wdn_data_loader(args, data)
-            elif args.MODEL in ('DCN'):
-                data = dcn_data_loader(args, data)
             else:
                 pass
             data_list.append(data)
-
-    elif args.MODEL in ('LGBM', 'CATB', 'XGB'):
-        X_data = np.array(data['train'].drop(['rating'], axis=1))
-        y_data = np.array(data['train']['rating'])
-        for train_idx, test_idx in kf.split(X_data):
-            X_train, X_valid = X_data[train_idx], X_data[test_idx]
-            y_train, y_valid = y_data[train_idx], y_data[test_idx]
-            data['X_train'] = pd.DataFrame(X_train)
-            data['X_valid'] = pd.DataFrame(X_valid)
-            data['y_train'] = pd.DataFrame(y_train).squeeze()
-            data['y_valid'] = pd.DataFrame(y_valid).squeeze()
-            data_list.append(data)
-
     else:
         pass
 
@@ -109,25 +78,13 @@ def main(args):
             model = NeuralCollaborativeFiltering(args, data_list[idx])
         elif args.MODEL=='WDN':
             model = WideAndDeepModel(args, data_list[idx])
-        elif args.MODEL=='DCN':
-            model = DeepCrossNetworkModel(args, data_list[idx])
-        elif args.MODEL=='CNN_FM':
-            model = CNN_FM(args, data_list[idx])
-        elif args.MODEL=='DeepCoNN':
-            model = DeepCoNN(args, data_list[idx])
-        elif args.MODEL=='LGBM':
-            model = LGBM(args, data_list[idx])
-        elif args.MODEL=='CATB':
-            model = CATB(args, data_list[idx])
-        elif args.MODEL=='XGB':
-            model = XGB(args, data_list[idx])
         else:
             pass
 
         ######################## WANDB
         if args.WANDB:
-            wandb.init(project="test-project", entity="ai-tech-4-recsys13")
-            wandb.run.name =  args.MODEL #+ '_EPOCH:' + str(args.EPOCHS) + '_EMBDIM:' + str(args.FFM_EMBED_DIM)
+            wandb.init(project="your-project", entity="your-entity")
+            wandb.run.name =  args.MODEL
             wandb.config = {
                 "learning_rate": args.LR ,
                 "epochs": args.EPOCHS,
@@ -137,24 +94,17 @@ def main(args):
 
         ######################## TRAIN
         print(f'--------------- {args.MODEL} TRAINING ---------------')
-        if args.MODEL in ('LGBM', 'CATB', 'XGB'):
-            pass
-        else:
-            model.train()
+        model.train()
         
         if args.WANDB:
             wandb.finish()
 
         ######################## INFERENCE
         print(f'--------------- {args.MODEL} PREDICT ---------------')
-        if args.MODEL in ('FM', 'FFM', 'NCF', 'WDN', 'DCN'):
+        if args.MODEL in ('FM', 'FFM', 'NCF', 'WDN'):
             predicts = model.predict(data['test_dataloader'])
         elif args.MODEL=='CNN_FM':
             predicts  = model.predict(data['test_dataloader'])
-        elif args.MODEL=='DeepCoNN':
-            predicts  = model.predict(data['test_dataloader'])
-        elif args.MODEL in ('LGBM', 'CATB', 'XGB'):
-            predicts  = model.predict(data['test'])
         else:
             pass
 
@@ -165,7 +115,7 @@ def main(args):
     ######################## SAVE PREDICT
     print(f'--------------- SAVE {args.MODEL} PREDICT ---------------')
     submission = pd.read_csv(args.DATA_PATH + 'sample_submission.csv')
-    if args.MODEL in ('FM', 'FFM', 'NCF', 'WDN', 'DCN', 'CNN_FM', 'DeepCoNN', 'LGBM', 'CATB', 'XGB'):
+    if args.MODEL in ('FM', 'FFM', 'NCF', 'WDN'):
         submission['rating'] = mean_predicts
     else:
         pass
@@ -177,7 +127,6 @@ def main(args):
     submission.to_csv('submit/{}_{}.csv'.format(save_time, args.MODEL), index=False)
 
 
-
 if __name__ == "__main__":
 
     ######################## BASIC ENVIRONMENT SETUP
@@ -186,7 +135,7 @@ if __name__ == "__main__":
 
     ############### BASIC OPTION
     arg('--DATA_PATH', type=str, default='data/raw_data/', help='Data path를 설정할 수 있습니다.')
-    arg('--MODEL', type=str, choices=['FM', 'FFM', 'NCF', 'WDN', 'DCN', 'CNN_FM', 'DeepCoNN', 'LGBM', 'CATB', 'XGB'],
+    arg('--MODEL', type=str, choices=['FM', 'FFM', 'NCF', 'WDN'],
                                 help='학습 및 예측할 모델을 선택할 수 있습니다.')
     arg('--DATA_SHUFFLE', type=bool, default=True, help='데이터 셔플 여부를 조정할 수 있습니다.')
     arg('--TEST_SIZE', type=float, default=0.2, help='Train/Valid split 비율을 조정할 수 있습니다.')
@@ -218,45 +167,6 @@ if __name__ == "__main__":
     arg('--WDN_EMBED_DIM', type=int, default=16, help='WDN에서 embedding시킬 차원을 조정할 수 있습니다.')
     arg('--WDN_MLP_DIMS', type=list, default=(16, 16), help='WDN에서 MLP Network의 차원을 조정할 수 있습니다.')
     arg('--WDN_DROPOUT', type=float, default=0.2, help='WDN에서 Dropout rate를 조정할 수 있습니다.')
-
-    ############### DCN
-    arg('--DCN_EMBED_DIM', type=int, default=16, help='DCN에서 embedding시킬 차원을 조정할 수 있습니다.')
-    arg('--DCN_MLP_DIMS', type=list, default=(16, 16), help='DCN에서 MLP Network의 차원을 조정할 수 있습니다.')
-    arg('--DCN_DROPOUT', type=float, default=0.2, help='DCN에서 Dropout rate를 조정할 수 있습니다.')
-    arg('--DCN_NUM_LAYERS', type=int, default=3, help='DCN에서 Cross Network의 레이어 수를 조정할 수 있습니다.')
-
-    ############### CNN_FM
-    arg('--CNN_FM_EMBED_DIM', type=int, default=128, help='CNN_FM에서 user와 item에 대한 embedding시킬 차원을 조정할 수 있습니다.')
-    arg('--CNN_FM_LATENT_DIM', type=int, default=8, help='CNN_FM에서 user/item/image에 대한 latent 차원을 조정할 수 있습니다.')
-
-    ############### DeepCoNN
-    arg('--DEEPCONN_VECTOR_CREATE', type=bool, default=False, help='DEEP_CONN에서 text vector 생성 여부를 조정할 수 있으며 최초 학습에만 True로 설정하여야합니다.')
-    arg('--DEEPCONN_EMBED_DIM', type=int, default=32, help='DEEP_CONN에서 user와 item에 대한 embedding시킬 차원을 조정할 수 있습니다.')
-    arg('--DEEPCONN_LATENT_DIM', type=int, default=10, help='DEEP_CONN에서 user/item/image에 대한 latent 차원을 조정할 수 있습니다.')
-    arg('--DEEPCONN_CONV_1D_OUT_DIM', type=int, default=50, help='DEEP_CONN에서 1D conv의 출력 크기를 조정할 수 있습니다.')
-    arg('--DEEPCONN_KERNEL_SIZE', type=int, default=3, help='DEEP_CONN에서 1D conv의 kernel 크기를 조정할 수 있습니다.')
-    arg('--DEEPCONN_WORD_DIM', type=int, default=768, help='DEEP_CONN에서 1D conv의 입력 크기를 조정할 수 있습니다.')
-    arg('--DEEPCONN_OUT_DIM', type=int, default=32, help='DEEP_CONN에서 1D conv의 출력 크기를 조정할 수 있습니다.')
-
-    ############### LGBM
-    arg('--LGBM_TYPE', type=str, default='R', help='LGBM Classifier(C)와 Regressor(R) 중 고를 수 있습니다.')
-    arg('--LGBM_ALG', type=str, default='gbdt', help='LGBM에서 실행시킬 알고리즘을 정의할 수 있습니다.')
-    arg('--LGBM_LAMBDA', type=int, default=0.1, help='LGBM에서 regularization 정규화 값을 조정할 수 있습니다.')
-    arg('--LGBM_MAX_DEPTH', type=int, default=10, help='LGBM에서 트리의 최대 깊이를 조정할 수 있습니다.')
-    arg('--LGBM_NUM_LEAVES', type=int, default=500, help='LGBM에서 전체 Tree의 leaves 수를 조정할 수 있습니다.')
-
-    ############### CATB
-    arg('--CATB_TYPE', type=str, default='R', help='CATB Classifier(C)와 Regressor(R) 중 고를 수 있습니다.')
-    arg('--CATB_ITER', type=int, default=10000, help='same as n_estiamtors')
-    arg('--CATB_DEPTH', type=int, default=10, help='Depth of the tree')
-
-    ############### XGB
-    arg('--XGB_TYPE', type=str, default='R', help='LGBM Classifier(C)와 Regressor(R) 중 고를 수 있습니다.')
-    arg('--XGB_BOOSTER', type=str, default='gbtree', help='XGB에서 실행시킬 알고리즘(gbtree, gblinear)을 정의할 수 있습니다.')
-    arg('--XGB_N_ESTI', type=int, default='10', help='XGB에서 학습에 활용될 weak leaner의 반복 수를 조정할 수 있습니다.')
-    arg('--XGB_LAMBDA', type=int, default=1, help='XGB에서 L2 regularization 정규화 값을 조정할 수 있습니다.')
-    arg('--XGB_MIN_CHILD', type=int, default=1, help='XGB에서 leaf node에 포함되는 최소 관측치의 수를 조정할 수 있습니다.[0,inf]')
-    arg('--XGB_MAX_DEPTH', type=int, default=6, help='XGB에서 트리의 최대 깊이를 조정할 수 있습니다. [0,inf]')
-
+    
     args = parser.parse_args()
     main(args)

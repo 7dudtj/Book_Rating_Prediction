@@ -1,7 +1,7 @@
 import numpy as np
-
 import torch
 import torch.nn as nn
+
 
 def rmse(real: list, predict: list) -> float:
     pred = np.array(predict)
@@ -201,50 +201,3 @@ class _WideAndDeepModel(nn.Module):
         embed_x = self.embedding(x)
         x = self.linear(x) + self.mlp(embed_x.view(-1, self.embed_output_dim))
         return x.squeeze(1)
-
-class CrossNetwork(nn.Module):
-
-    def __init__(self, input_dim: int, num_layers: int):
-        super().__init__()
-        self.num_layers = num_layers
-        self.w = torch.nn.ModuleList([
-            torch.nn.Linear(input_dim, 1, bias=False) for _ in range(num_layers)
-        ])
-        self.b = torch.nn.ParameterList([
-            torch.nn.Parameter(torch.zeros((input_dim,))) for _ in range(num_layers)
-        ])
-
-    def forward(self, x: torch.Tensor):
-        """
-        :param x: Float tensor of size ``(batch_size, num_fields, embed_dim)``
-        """
-        x0 = x
-        for i in range(self.num_layers):
-            xw = self.w[i](x)
-            x = x0 * xw + self.b[i] + x
-        return x
-
-class _DeepCrossNetworkModel(nn.Module):
-    """
-    A pytorch implementation of Deep & Cross Network.
-    Reference:
-        R Wang, et al. Deep & Cross Network for Ad Click Predictions, 2017.
-    """
-
-    def __init__(self, field_dims: np.ndarray, embed_dim: int, num_layers: int, mlp_dims: tuple, dropout: float):
-        super().__init__()
-        self.embedding = FeaturesEmbedding(field_dims, embed_dim)
-        self.embed_output_dim = len(field_dims) * embed_dim
-        self.cn = CrossNetwork(self.embed_output_dim, num_layers)
-        self.mlp = MultiLayerPerceptron(self.embed_output_dim, mlp_dims, dropout, output_layer=False)
-        self.cd_linear = nn.Linear(mlp_dims[0], 1, bias=False)
-
-    def forward(self, x: torch.Tensor):
-        """
-        :param x: Long tensor of size ``(batch_size, num_fields)``
-        """
-        embed_x = self.embedding(x).view(-1, self.embed_output_dim)
-        x_l1 = self.cn(embed_x)
-        x_out = self.mlp(x_l1)
-        p = self.cd_linear(x_out)
-        return p.squeeze(1)
