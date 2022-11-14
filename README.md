@@ -35,19 +35,35 @@ pip install -r requirements.txt
 
 2. 원하는 용도에 맞는 파일을 선택합니다.
 ```text
-main.py >> 모델 학습
-kfold.py >> K-Fold Cross Validation을 이용한 모델 학습
+main.py: 모델 학습
+kfold.py: K-Fold Cross Validation을 이용한 모델 학습
 ```
 
 3. 원하는 모델에 대하여, 원하는 인자를 제공하여 학습을 진행합니다. 자세한 내용은 main.py 코드를 참고해주세요.
 ```python
+# Available Models: FM, FFM, NCF, WDN
 python main.py --MODEL=FM --FM_EMBED_DIM=4 --WEIGHT_DECAY=0.0001 --DATA_PATH='data/data2/' --EPOCHS=10
 ```
 
-4. 학습된 모델은 다음 경로에 저장됩니다.
+4. 혹시 다음과 같은 에러가 발생하실 경우,
+```shell
+AssertionError: Torch not compiled with CUDA enabled
+```
+
+5. 다음 명령어를 입력하면 에러가 해결됩니다.
+```shell
+pip install torch===1.5.0 torchvision===0.6.0 -f https://download.pytorch.org/whl/torch_stable.html
+```
+
+6. 학습된 모델은 다음 경로에 저장됩니다.
 ```text
 ./models/
 ```
+
+## :smiley:Experience our prediction model
+
+Book Rating Prediction Model을 직접 경험하실 수 있도록, 프로토타입을 제작하여 배포하였습니다.  
+[책 평점 예측 모델 프로토타입](https://7dudtj-book-rating-prediction-streamlit-o3hwlu.streamlit.app/) 에서 직접 예측 모델을 경험할 수 있습니다.  
 
 ## :star:To see more
 
