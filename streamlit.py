@@ -139,7 +139,7 @@ def main():
                 pred = model(fields)
                 pred = round(pred.item(), 2)
 
-        st.write(f'예측 평점: {pred}')
+        st.write(f'예측 평점: {pred}/10')
         if pred < 4:
             st.write(f"책 {isbn_input}은 고객님 취향에 맞지 않을것 같아요. 다른 책을 찾아보시겠어요?")
         elif pred < 7:
